@@ -85,12 +85,16 @@
 }
 
 
-/* Account entry point (#49): a quiet link in the top-right of the home hero. */
-.mc-account-link {
+/* Account + leaderboard entry points (#49, #50): quiet links top-right. */
+.mc-corner-links {
   position: fixed;
   top: 16px;
   right: 18px;
   z-index: 5;
+  display: flex;
+  gap: 8px;
+}
+.mc-account-link {
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
