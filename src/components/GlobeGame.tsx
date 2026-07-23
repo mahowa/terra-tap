@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -26,6 +26,13 @@ import {
   type CountryGeometry,
 } from '@/lib/country-lookup'
 import type { MapDetail } from '@/lib/difficulty'
+import {
+  COUNTUP_MS,
+  LINE_ANIM_MS,
+  easeOutCubic,
+  greatCirclePath,
+  partialGreatCirclePath,
+} from '@/lib/anim'
 import {
   SPEED_ROUND_SECONDS,
   expiryAction,
@@ -108,11 +115,41 @@ const BORDERS_SOURCE = 'gg-borders'
 // player's current view (see cameraActionFor, issue #7).
 const GLOBE_CENTER: [number, number] = [0, 20]
 
-/** A small colored dot marker element for guess/answer. */
+/**
+ * A small colored dot marker for guess/answer. The dot lives in an inner element
+ * so its pop-in animation (#46) doesn't fight the translate transform MapLibre
+ * applies to the outer marker element for positioning.
+ */
 function markerEl(color: string): HTMLDivElement {
   const el = document.createElement('div')
-  el.style.cssText = `width:16px;height:16px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.45);`
+  const dot = document.createElement('div')
+  dot.className = 'gg-marker-dot'
+  dot.style.cssText = `width:16px;height:16px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.45);`
+  el.appendChild(dot)
   return el
+}
+
+/**
+ * Counts up from 0 to `value` on mount (#46). setState only fires inside the
+ * rAF callback, never synchronously in the effect body. Reduced-motion users
+ * see the final number immediately.
+ */
+function CountUp({ value, className }: { value: number; className?: string }) {
+  const [shown, setShown] = useState(() => (prefersReducedMotion() ? value : 0))
+  useEffect(() => {
+    if (prefersReducedMotion()) return
+    let raf = 0
+    let start: number | null = null
+    const step = (now: number) => {
+      if (start === null) start = now
+      const t = Math.min(1, (now - start) / COUNTUP_MS)
+      setShown(Math.round(easeOutCubic(t) * value))
+      if (t < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  return <span className={className}>{shown}</span>
 }
 
 type Phase = 'guessing' | 'revealed' | 'done'
@@ -211,6 +248,9 @@ export default function GlobeGame({
   const wrapRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const markersRef = useRef<MlMarker[]>([])
+  // Handle for the reveal line's grow animation, so it can be cancelled when the
+  // round advances or the component unmounts (#46).
+  const lineRafRef = useRef<number | null>(null)
   const clickRef = useRef<(p: { lng: number; lat: number }) => void>(() => {})
   const expireRef = useRef<() => void>(() => {})
   const roundStartRef = useRef<number>(0)
@@ -429,36 +469,56 @@ export default function GlobeGame({
       })
     }
 
-    const showLine = phase === 'revealed' && guess && answer
-    const data = {
-      type: 'FeatureCollection' as const,
-      features: showLine
-        ? [
-            {
-              type: 'Feature' as const,
-              properties: {},
-              geometry: {
-                type: 'LineString' as const,
-                coordinates: [
-                  [guess.lng, guess.lat],
-                  [answer.lng, answer.lat],
-                ],
-              },
-            },
-          ]
-        : [],
+    // The guess→answer line grows along the great circle on reveal (#46). A
+    // stray animation from the previous round is cancelled first.
+    if (lineRafRef.current !== null) {
+      cancelAnimationFrame(lineRafRef.current)
+      lineRafRef.current = null
     }
-    const src = map.getSource(LINE_SOURCE) as { setData?: (d: unknown) => void } | undefined
-    if (src?.setData) {
-      src.setData(data)
+    const showLine = phase === 'revealed' && guess && answer
+    const applyLine = (coords: [number, number][]) => {
+      const data = {
+        type: 'FeatureCollection' as const,
+        features:
+          coords.length >= 2
+            ? [
+                {
+                  type: 'Feature' as const,
+                  properties: {},
+                  geometry: { type: 'LineString' as const, coordinates: coords },
+                },
+              ]
+            : [],
+      }
+      const src = map.getSource(LINE_SOURCE) as { setData?: (d: unknown) => void } | undefined
+      if (src?.setData) {
+        src.setData(data)
+      } else {
+        map.addSource(LINE_SOURCE, { type: 'geojson', data })
+        map.addLayer({
+          id: LINE_SOURCE,
+          type: 'line',
+          source: LINE_SOURCE,
+          paint: { 'line-color': GUESS_COLOR, 'line-width': 2, 'line-dasharray': [2, 1.5] },
+        })
+      }
+    }
+    if (showLine && guess && answer) {
+      if (prefersReducedMotion()) {
+        applyLine(greatCirclePath(guess, answer))
+      } else {
+        applyLine([]) // ensure the layer exists, then grow into it
+        let start: number | null = null
+        const tick = (now: number) => {
+          if (start === null) start = now
+          const t = Math.min(1, (now - start) / LINE_ANIM_MS)
+          applyLine(partialGreatCirclePath(guess, answer, easeOutCubic(t)))
+          lineRafRef.current = t < 1 ? requestAnimationFrame(tick) : null
+        }
+        lineRafRef.current = requestAnimationFrame(tick)
+      }
     } else {
-      map.addSource(LINE_SOURCE, { type: 'geojson', data })
-      map.addLayer({
-        id: LINE_SOURCE,
-        type: 'line',
-        source: LINE_SOURCE,
-        paint: { 'line-color': GUESS_COLOR, 'line-width': 2, 'line-dasharray': [2, 1.5] },
-      })
+      applyLine([])
     }
 
     // Camera: frame the reveal pair, otherwise stay put — new rounds keep the
@@ -470,6 +530,14 @@ export default function GlobeGame({
         // Honor prefers-reduced-motion: jump instead of flying (#30).
         duration: revealDuration(prefersReducedMotion()),
       })
+    }
+
+    // Stop the line animation if the round advances (or we unmount) mid-draw.
+    return () => {
+      if (lineRafRef.current !== null) {
+        cancelAnimationFrame(lineRafRef.current)
+        lineRafRef.current = null
+      }
     }
   }, [ready, guess, phase, answer, results])
 
@@ -719,7 +787,7 @@ export default function GlobeGame({
             : 'Final score'}
         </h1>
         <p className="gg-total">
-          {finalTotal}
+          <CountUp value={finalTotal} />
           <span className="gg-outof"> / {maxPossible}</span>
         </p>
         <p className="gg-verdict">{verdict}</p>
@@ -751,7 +819,7 @@ export default function GlobeGame({
         )}
         <ul className="gg-summary">
           {summary.map((r, i) => (
-            <li key={i}>
+            <li key={i} className="gg-summary-item" style={{ '--i': i } as CSSProperties}>
               <div className="gg-summary-row">
                 <span className="gg-city">{r.name}</span>
                 <span className="gg-dist">
