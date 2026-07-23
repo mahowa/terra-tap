@@ -27,6 +27,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(dirname),
   },
+  // The Teams Widget (#48) is meant to be embedded on external sites, so the
+  // /embed routes must be frameable. Scope the allowance to /embed only.
+  async headers() {
+    return [
+      {
+        source: '/embed/:path*',
+        headers: [{ key: 'Content-Security-Policy', value: 'frame-ancestors *' }],
+      },
+    ]
+  },
 }
 
 export default withPayload(nextConfig, { devBundleServerPackages: false })
