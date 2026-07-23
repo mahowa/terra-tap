@@ -12,6 +12,7 @@ import { DailySets } from './collections/DailySets'
 import { PracticeCollections } from './collections/PracticeCollections'
 import { NewsItems } from './collections/NewsItems'
 import { Results } from './collections/Results'
+import { Groups } from './collections/Groups'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -27,7 +28,16 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Locations, DailySets, PracticeCollections, NewsItems, Results],
+  collections: [
+    Users,
+    Media,
+    Locations,
+    DailySets,
+    PracticeCollections,
+    NewsItems,
+    Results,
+    Groups,
+  ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

@@ -74,6 +74,7 @@ export interface Config {
     'practice-collections': PracticeCollection;
     'news-items': NewsItem;
     results: Result;
+    groups: Group;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     'practice-collections': PracticeCollectionsSelect<false> | PracticeCollectionsSelect<true>;
     'news-items': NewsItemsSelect<false> | NewsItemsSelect<true>;
     results: ResultsSelect<false> | ResultsSelect<true>;
+    groups: GroupsSelect<false> | GroupsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -358,6 +360,31 @@ export interface Result {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "groups".
+ */
+export interface Group {
+  id: number;
+  name: string;
+  /**
+   * URL identifier; generated from the name.
+   */
+  slug: string;
+  owner: number | User;
+  members?: (number | User)[] | null;
+  /**
+   * Share to invite; rotate to revoke old links.
+   */
+  inviteCode: string;
+  visibility?: ('unlisted' | 'private') | null;
+  /**
+   * Optional emoji badge.
+   */
+  avatarEmoji?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -407,6 +434,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'results';
         value: number | Result;
+      } | null)
+    | ({
+        relationTo: 'groups';
+        value: number | Group;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -591,6 +622,21 @@ export interface ResultsSelect<T extends boolean = true> {
   maxPossible?: T;
   rounds?: T;
   elapsedMs?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "groups_select".
+ */
+export interface GroupsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  owner?: T;
+  members?: T;
+  inviteCode?: T;
+  visibility?: T;
+  avatarEmoji?: T;
   updatedAt?: T;
   createdAt?: T;
 }
