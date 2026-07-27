@@ -12,6 +12,9 @@ export default async function HomePage() {
         <Link className="mc-account-link" href="/leaderboard">
           Leaderboard
         </Link>
+        <Link className="mc-account-link" href="/groups">
+          Groups
+        </Link>
         <Link className="mc-account-link" href="/account">
           Account
         </Link>
