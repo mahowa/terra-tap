@@ -1,0 +1,123 @@
+/* Theme-aware widget (#48): dark by default / with the host's dark scheme,
+   light when the host is light or ?theme=light is forced. */
+.emb {
+  --bg: #0b1224;
+  --card: rgba(255, 255, 255, 0.04);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #34d399;
+  --border: rgba(148, 163, 184, 0.16);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+.emb.light,
+:root:not([data-theme]) .emb.auto {
+  /* explicit light */
+}
+@media (prefers-color-scheme: light) {
+  .emb:not(.dark) {
+    --bg: #ffffff;
+    --card: rgba(15, 23, 42, 0.03);
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #059669;
+    --border: rgba(15, 23, 42, 0.1);
+  }
+}
+.emb.light {
+  --bg: #ffffff;
+  --card: rgba(15, 23, 42, 0.03);
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #059669;
+  --border: rgba(15, 23, 42, 0.1);
+}
+
+.emb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.emb-emoji {
+  font-size: 18px;
+}
+.emb-name {
+  font-weight: 800;
+  font-size: 15px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.emb-board {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.emb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.emb-row {
+  display: grid;
+  grid-template-columns: 22px 22px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 2px;
+  font-size: 14px;
+}
+.emb-row + .emb-row {
+  border-top: 1px solid var(--border);
+}
+.emb-rank {
+  color: var(--muted);
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.emb-flag {
+  text-align: center;
+}
+.emb-player {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.emb-score {
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.emb-msg {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 2px;
+}
+.emb-foot {
+  display: block;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  text-align: right;
+}

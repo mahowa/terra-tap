@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation'
 import { getCurrentUser, getPayloadClient } from '@/lib/auth'
 import { BOARDS, rankBoard, type LeaderboardBoard, type PlayerRow } from '@/lib/leaderboard'
 import { memberIds, normalizeCode } from '@/lib/groups'
+import { embedToken } from '@/lib/embed'
 import GroupActions from '@/components/GroupActions'
+import EmbedSnippet from '@/components/EmbedSnippet'
 import type { User } from '@/payload-types'
 import '../../styles.css'
 import '../../account/account.css'
@@ -151,6 +153,14 @@ export default async function GroupPage({
             </ol>
           )}
         </>
+      )}
+
+      {isOwner && (
+        <EmbedSnippet
+          slug={group.slug}
+          isPrivate={group.visibility === 'private'}
+          token={embedToken(group.id, process.env.PAYLOAD_SECRET || '')}
+        />
       )}
     </main>
   )
