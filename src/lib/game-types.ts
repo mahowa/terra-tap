@@ -1,4 +1,5 @@
 import type { Difficulty } from './scoring'
+import type { MapDetail } from './difficulty'
 
 /** A single playable round: a place to find on the globe. */
 export type Round = {
@@ -32,8 +33,17 @@ export type GameRun = {
   dateKey: string
   /** Timed "speed run": each round is played against a countdown (issue #9). */
   timed?: boolean
-  /** Show place labels on the globe (history mode: the map isn't the puzzle). */
+  /**
+   * Marks a History-mode run (the map isn't the puzzle). Kept as the mode flag
+   * that `runKind` keys off; the *visual* detail is chosen by `mapDetail` below.
+   */
   labeled?: boolean
+  /**
+   * How much the globe draws (issue #47): 'labeled' = borders + names,
+   * 'borders' = outlines only, 'plain' = bare satellite. Defaults to 'plain'
+   * when unset (every non-History mode).
+   */
+  mapDetail?: MapDetail
   /** Versus (#5): the challenge seed this run was dealt from. */
   versusSeed?: string
   /**

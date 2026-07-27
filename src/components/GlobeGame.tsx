@@ -22,8 +22,10 @@ import {
   countryAt,
   countryFeatureAt,
   describeMiss,
+  loadBordersGeoJSON,
   type CountryGeometry,
 } from '@/lib/country-lookup'
+import type { MapDetail } from '@/lib/difficulty'
 import {
   SPEED_ROUND_SECONDS,
   expiryAction,
@@ -55,10 +57,13 @@ const ANSWER_COLOR = '#34d399' // emerald-400
 
 // ESRI World Imagery: free, key-less, label-free satellite tiles with deep zoom
 // (sub-meter to ~z19). No place names → fair guessing. Attribution is required
-// and shown via MapLibre's attribution control. History mode (#4) overlays
-// Esri's boundaries+places reference tiles — there the puzzle is the history,
-// not the unlabeled map.
-function buildMapStyle(labeled: boolean): StyleSpecification {
+// and shown via MapLibre's attribution control.
+//
+// History difficulty (#47) chooses what's drawn on top:
+//   'labeled' → Esri's boundaries+places raster (borders AND names, fused)
+//   'borders' → an offline vector border layer added post-load (see below)
+//   'plain'   → nothing (bare satellite)
+function buildMapStyle(detail: MapDetail): StyleSpecification {
   const style: StyleSpecification = {
     version: 8,
     sources: {
@@ -75,7 +80,7 @@ function buildMapStyle(labeled: boolean): StyleSpecification {
     },
     layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
   }
-  if (labeled) {
+  if (detail === 'labeled') {
     style.sources.labels = {
       type: 'raster',
       tiles: [
@@ -92,6 +97,10 @@ function buildMapStyle(labeled: boolean): StyleSpecification {
 
 const LINE_SOURCE = 'gg-line'
 const REGION_SOURCE = 'gg-region'
+// Medium history map (#47): all-country outlines from the offline dataset. The
+// Esri reference raster can't give borders without names, so borders-only is
+// drawn as a vector line layer instead.
+const BORDERS_SOURCE = 'gg-borders'
 
 // Neutral full-globe framing the game starts from; the zoom is sized to the
 // viewport at mount (issue #34). Applied after the globe projection is active
@@ -306,9 +315,10 @@ export default function GlobeGame({
         center: GLOBE_CENTER,
         zoom: initialGlobeZoom(wrapRef.current.clientWidth, wrapRef.current.clientHeight),
       }
+      const mapDetail: MapDetail = run.mapDetail ?? 'plain'
       map = new Map({
         container: wrapRef.current,
-        style: buildMapStyle(!!run.labeled),
+        style: buildMapStyle(mapDetail),
         center: startView.center,
         zoom: startView.zoom,
         attributionControl: { compact: true },
@@ -327,6 +337,24 @@ export default function GlobeGame({
         // Start the attribution collapsed to its ⓘ toggle — expanded it covers
         // the Submit button on phones (#25).
         collapseAttribution(wrapRef.current)
+        // Medium difficulty (#47): draw country outlines from the offline
+        // dataset — borders without the Esri name labels.
+        if (mapDetail === 'borders') {
+          loadBordersGeoJSON().then((data) => {
+            const m = mapRef.current
+            if (!m || m.getSource(BORDERS_SOURCE)) return
+            m.addSource(BORDERS_SOURCE, { type: 'geojson', data })
+            m.addLayer({
+              id: BORDERS_SOURCE,
+              type: 'line',
+              source: BORDERS_SOURCE,
+              paint: {
+                'line-color': 'rgba(255,255,255,0.6)',
+                'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 3, 0.8, 6, 1.4],
+              },
+            })
+          })
+        }
       })
       map.on('click', (e) => clickRef.current({ lng: e.lngLat.lng, lat: e.lngLat.lat }))
       // Keyboard play (#30): MapLibre's canvas is focusable with built-in
@@ -349,7 +377,7 @@ export default function GlobeGame({
       map?.remove()
       mapRef.current = null
     }
-  }, [run.labeled])
+  }, [run.mapDetail])
 
   // Draw guess/answer markers + the connecting line, and frame the camera.
   useEffect(() => {

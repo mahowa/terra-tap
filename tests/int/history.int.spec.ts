@@ -63,4 +63,16 @@ describe('buildHistoryRun', () => {
     expect(a).toEqual(b)
     expect(a).not.toEqual(c)
   })
+
+  it('sets the map detail from the chosen difficulty (#47)', () => {
+    expect(buildHistoryRun(seededRng('d'), 5, 'easy').mapDetail).toBe('labeled')
+    expect(buildHistoryRun(seededRng('d'), 5, 'medium').mapDetail).toBe('borders')
+    expect(buildHistoryRun(seededRng('d'), 5, 'hard').mapDetail).toBe('plain')
+    // Still a History-mode run regardless of difficulty.
+    expect(buildHistoryRun(seededRng('d'), 5, 'hard').labeled).toBe(true)
+  })
+
+  it('defaults to Easy (labeled) when no difficulty is given', () => {
+    expect(buildHistoryRun(seededRng('d')).mapDetail).toBe('labeled')
+  })
 })

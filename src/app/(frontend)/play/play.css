@@ -169,6 +169,44 @@
   color: #94a3b8;
 }
 
+/* History map-difficulty picker (#47): a small pill floating top-center, clear
+   of the run title (top-left) and score (top-right) in the HUD. */
+.gg-mapdiff {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(8, 15, 30, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.gg-mapdiff-btn {
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+  padding: 6px 14px;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.gg-mapdiff-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+.gg-mapdiff-btn.is-active {
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  color: #04263a;
+}
+.gg-mapdiff-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
 .gg-btn {
   font: inherit;
   cursor: pointer;

@@ -122,6 +122,36 @@ export async function countryFeatureAt(point: LatLng): Promise<CountryFeature | 
   return countryFeatureAtSync(point, await loadCountries())
 }
 
+export type BordersGeoJSON = {
+  type: 'FeatureCollection'
+  features: {
+    type: 'Feature'
+    properties: Record<string, never>
+    geometry: CountryGeometry
+  }[]
+}
+
+/**
+ * Borders-only GeoJSON: every country's outline, no names (issue #47, Medium
+ * history map). Rendered by a `line` layer so it draws the polygon boundaries
+ * without any fill or labels. Pure so it's unit-testable.
+ */
+export function bordersGeoJSON(countries: CountryCollection): BordersGeoJSON {
+  return {
+    type: 'FeatureCollection',
+    features: countries.features.map((f) => ({
+      type: 'Feature',
+      properties: {},
+      geometry: f.geometry,
+    })),
+  }
+}
+
+/** Async borders GeoJSON with the dataset lazy-loaded on first use. */
+export async function loadBordersGeoJSON(): Promise<BordersGeoJSON> {
+  return bordersGeoJSON(await loadCountries())
+}
+
 /**
  * One-liner telling the player where their miss actually landed (issue #2).
  * Returns null for perfect hits — nothing to explain.

@@ -5,6 +5,9 @@ import {
   countryAt,
   countryFeatureAt,
   describeMiss,
+  bordersGeoJSON,
+  loadBordersGeoJSON,
+  type CountryCollection,
 } from '@/lib/country-lookup'
 
 // Unit square ring ([lng, lat] positions, closed)
@@ -82,6 +85,39 @@ describe('countryFeatureAt', () => {
     const p = { lat: 35.68, lng: 139.69 } // Tokyo
     const f = await countryFeatureAt(p)
     expect(f?.properties.name).toBe(await countryAt(p))
+  })
+})
+
+describe('bordersGeoJSON (#47 Medium map)', () => {
+  const sample: CountryCollection = {
+    features: [
+      { properties: { name: 'A' }, geometry: { type: 'Polygon', coordinates: [SQUARE] } },
+      {
+        properties: { name: 'B' },
+        geometry: { type: 'MultiPolygon', coordinates: [[SQUARE], [HOLE]] },
+      },
+    ],
+  }
+
+  it('produces a FeatureCollection with one feature per country', () => {
+    const fc = bordersGeoJSON(sample)
+    expect(fc.type).toBe('FeatureCollection')
+    expect(fc.features).toHaveLength(2)
+  })
+
+  it('keeps geometry but drops names (borders only, no labels)', () => {
+    const fc = bordersGeoJSON(sample)
+    expect(fc.features[0].geometry).toEqual(sample.features[0].geometry)
+    expect(fc.features[0].properties).toEqual({})
+    expect(fc.features[1].geometry.type).toBe('MultiPolygon')
+  })
+
+  it('loads the real dataset into drawable borders', async () => {
+    const fc = await loadBordersGeoJSON()
+    expect(fc.features.length).toBeGreaterThan(100)
+    for (const f of fc.features.slice(0, 5)) {
+      expect(['Polygon', 'MultiPolygon']).toContain(f.geometry.type)
+    }
   })
 })
 

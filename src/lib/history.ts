@@ -1,5 +1,10 @@
 import type { Difficulty } from './scoring'
 import type { GameRun, Round } from './game-types'
+import {
+  DEFAULT_HISTORY_DIFFICULTY,
+  mapDetailFor,
+  type HistoryDifficulty,
+} from './difficulty'
 import { pick } from './rng'
 
 /**
@@ -93,10 +98,15 @@ const toRound = (place: HistoryPlace): Round => ({
   clue: place.clue,
 })
 
-/** A labeled, clue-driven practice run sampled from the history pool. */
+/**
+ * A clue-driven practice run sampled from the history pool. The chosen
+ * difficulty (issue #47) sets how much the globe shows: Easy = borders + names,
+ * Medium = borders only, Hard = neither.
+ */
 export function buildHistoryRun(
   rng: () => number,
   count: number = HISTORY_RUN_LENGTH,
+  difficulty: HistoryDifficulty = DEFAULT_HISTORY_DIFFICULTY,
 ): GameRun {
   const rounds = pick(HISTORY_PLACES, count, rng).map(toRound)
   return {
@@ -105,5 +115,6 @@ export function buildHistoryRun(
     mode: 'practice',
     dateKey: '',
     labeled: true,
+    mapDetail: mapDetailFor(difficulty),
   }
 }
