@@ -4,6 +4,8 @@ import config from '../../src/payload.config.js'
 export const testUser = {
   email: 'dev@payloadcms.com',
   password: 'test',
+  // Admin so the e2e suite can reach the Payload admin panel (#49 gates it on role).
+  role: 'admin' as const,
 }
 
 /**

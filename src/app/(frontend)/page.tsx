@@ -8,6 +8,9 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage() {
   return (
     <div className="mc-home">
+      <Link className="mc-account-link" href="/account">
+        Account
+      </Link>
       <div className="mc-hero">
         <h1 className="mc-logo">
           Terra<span>Tap</span>

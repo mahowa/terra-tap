@@ -73,6 +73,7 @@ export interface Config {
     'daily-sets': DailySet;
     'practice-collections': PracticeCollection;
     'news-items': NewsItem;
+    results: Result;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +87,7 @@ export interface Config {
     'daily-sets': DailySetsSelect<false> | DailySetsSelect<true>;
     'practice-collections': PracticeCollectionsSelect<false> | PracticeCollectionsSelect<true>;
     'news-items': NewsItemsSelect<false> | NewsItemsSelect<true>;
+    results: ResultsSelect<false> | ResultsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -132,6 +134,10 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   displayName?: string | null;
+  /**
+   * Admins can manage all content and reach /admin.
+   */
+  role: 'player' | 'admin';
   /**
    * ISO country code / emoji flag shown on the profile.
    */
@@ -315,6 +321,43 @@ export interface NewsItem {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "results".
+ */
+export interface Result {
+  id: number;
+  /**
+   * Null for a run completed while signed out.
+   */
+  user?: (number | null) | User;
+  mode: 'daily' | 'speed' | 'versus' | 'history' | 'quiz';
+  /**
+   * UTC day (YYYY-MM-DD) for dated modes; empty otherwise.
+   */
+  dateKey?: string | null;
+  title?: string | null;
+  total: number;
+  maxPossible?: number | null;
+  /**
+   * Per-round breakdown: name, base, multiplier, points, distanceKm.
+   */
+  rounds?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Play time for timed modes.
+   */
+  elapsedMs?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -360,6 +403,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'news-items';
         value: number | NewsItem;
+      } | null)
+    | ({
+        relationTo: 'results';
+        value: number | Result;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -409,6 +456,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   displayName?: T;
+  role?: T;
   countryFlag?: T;
   prefs?:
     | T
@@ -527,6 +575,22 @@ export interface NewsItemsSelect<T extends boolean = true> {
       };
   matchedLocations?: T;
   fetchedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "results_select".
+ */
+export interface ResultsSelect<T extends boolean = true> {
+  user?: T;
+  mode?: T;
+  dateKey?: T;
+  title?: T;
+  total?: T;
+  maxPossible?: T;
+  rounds?: T;
+  elapsedMs?: T;
   updatedAt?: T;
   createdAt?: T;
 }

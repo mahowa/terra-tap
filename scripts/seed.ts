@@ -28,6 +28,7 @@ async function run() {
         email: 'admin@terratap.test',
         password: 'changeme123',
         displayName: 'Admin',
+        role: 'admin',
       },
     })
     payload.logger.info('Created admin user admin@terratap.test / changeme123')

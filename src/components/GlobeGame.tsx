@@ -254,6 +254,8 @@ export default function GlobeGame({
   const clickRef = useRef<(p: { lng: number; lat: number }) => void>(() => {})
   const expireRef = useRef<() => void>(() => {})
   const roundStartRef = useRef<number>(0)
+  // Guards the one-shot server save of a completed run (#49).
+  const syncedRef = useRef(false)
 
   // On mount, if this lockable run was already played in this browser
   // (daily or speed run, #21), jump straight to the saved results. Otherwise
@@ -716,6 +718,31 @@ export default function GlobeGame({
     () => (phase === 'done' && statsMode ? loadStats(statsMode, run.dateKey) : null),
     [phase, statsMode, run.dateKey, saved], // eslint-disable-line react-hooks/exhaustive-deps
   )
+
+  // Persist a freshly completed run to the account (#49). Fire-and-forget: the
+  // route no-ops for signed-out players (local-first play is unchanged) and this
+  // never blocks the results screen. Skipped on locked replays (playedEarlier)
+  // and guarded to run once per run.
+  useEffect(() => {
+    if (phase !== 'done' || playedEarlier || syncedRef.current) return
+    syncedRef.current = true
+    void fetch('/api/results/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        mode: runKind(run),
+        dateKey: run.dateKey,
+        title: run.title,
+        total: finalTotal,
+        maxPossible,
+        rounds: results.map(toSavedRound),
+        elapsedMs: run.timed ? elapsedMs : undefined,
+      }),
+    }).catch(() => {
+      /* offline / signed out — the local save already happened */
+    })
+  }, [phase, playedEarlier, run, finalTotal, maxPossible, results, elapsedMs])
 
   if (phase === 'done') {
     // Render from saved data when present (prior play), else from the live run.
