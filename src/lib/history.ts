@@ -5,13 +5,17 @@ import {
   mapDetailFor,
   type HistoryDifficulty,
 } from './difficulty'
-import { pick } from './rng'
+import { pick, seededRng } from './rng'
 
 /**
  * Geography History mode (issue #4): the prompt is a historical description
  * instead of a place name — the player has to work out *where* the history
  * happened. The globe shows labels in this mode (the challenge is knowing the
  * history, not reading an unlabeled map), configured via GameRun.labeled.
+ *
+ * Like the daily and the speed run, the hand is dealt from the UTC day key
+ * (issue #59): everyone who plays on a given day reads the same five moments,
+ * so results are comparable and the mode is shareable.
  */
 
 export type HistoryPlace = {
@@ -99,21 +103,25 @@ const toRound = (place: HistoryPlace): Round => ({
 })
 
 /**
- * A clue-driven practice run sampled from the history pool. The chosen
- * difficulty (issue #47) sets how much the globe shows: Easy = borders + names,
- * Medium = borders only, Hard = neither.
+ * The day's history run (issue #59). The hand is dealt by an RNG seeded from
+ * the UTC day key alone, so every player gets the same five moments — and
+ * switching difficulty mid-day re-skins the globe without re-dealing the
+ * places.
+ *
+ * The chosen difficulty (issue #47) sets how much the globe shows: Easy =
+ * borders + names, Medium = borders only, Hard = neither.
  */
 export function buildHistoryRun(
-  rng: () => number,
+  dateKey: string,
   count: number = HISTORY_RUN_LENGTH,
   difficulty: HistoryDifficulty = DEFAULT_HISTORY_DIFFICULTY,
 ): GameRun {
-  const rounds = pick(HISTORY_PLACES, count, rng).map(toRound)
+  const rounds = pick(HISTORY_PLACES, count, seededRng(`history:${dateKey}`)).map(toRound)
   return {
     title: 'Geography History',
     rounds,
     mode: 'practice',
-    dateKey: '',
+    dateKey,
     labeled: true,
     mapDetail: mapDetailFor(difficulty),
   }

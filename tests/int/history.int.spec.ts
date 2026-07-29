@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { HISTORY_PLACES, HISTORY_RUN_LENGTH, buildHistoryRun } from '@/lib/history'
-import { seededRng } from '@/lib/rng'
+import { pick, seededRng } from '@/lib/rng'
 import { countryAt } from '@/lib/country-lookup'
 
 describe('history data integrity', () => {
@@ -43,10 +43,11 @@ describe('history data integrity', () => {
 })
 
 describe('buildHistoryRun', () => {
-  it('builds a labeled practice run whose rounds carry clues', () => {
-    const run = buildHistoryRun(seededRng('history-test'))
+  it('builds a labeled run for the day whose rounds carry clues', () => {
+    const run = buildHistoryRun('2026-07-22')
     expect(run.labeled).toBe(true)
     expect(run.mode).toBe('practice')
+    expect(run.dateKey).toBe('2026-07-22')
     expect(run.title).toBe('Geography History')
     expect(run.rounds.length).toBe(HISTORY_RUN_LENGTH)
     for (const round of run.rounds) {
@@ -55,24 +56,42 @@ describe('buildHistoryRun', () => {
     }
   })
 
-  it('samples distinct places, deterministic per seed', () => {
-    const a = buildHistoryRun(seededRng('s1')).rounds.map((r) => r.name)
-    const b = buildHistoryRun(seededRng('s1')).rounds.map((r) => r.name)
-    const c = buildHistoryRun(seededRng('s2')).rounds.map((r) => r.name)
+  it('deals everyone the same distinct places on the same day (#59)', () => {
+    const a = buildHistoryRun('2026-07-22').rounds.map((r) => r.name)
+    const b = buildHistoryRun('2026-07-22').rounds.map((r) => r.name)
     expect(new Set(a).size).toBe(a.length)
     expect(a).toEqual(b)
-    expect(a).not.toEqual(c)
+  })
+
+  it('deals a different hand on a different day', () => {
+    const a = buildHistoryRun('2026-07-22').rounds.map((r) => r.name)
+    const b = buildHistoryRun('2026-07-23').rounds.map((r) => r.name)
+    expect(a).not.toEqual(b)
+  })
+
+  it('is seeded independently of the other daily modes', () => {
+    // Sharing a raw date seed would deal correlated hands across modes.
+    const day = '2026-07-22'
+    expect(buildHistoryRun(day).rounds.map((r) => r.name)).not.toEqual(
+      pick(HISTORY_PLACES, HISTORY_RUN_LENGTH, seededRng(day)).map((p) => p.name),
+    )
   })
 
   it('sets the map detail from the chosen difficulty (#47)', () => {
-    expect(buildHistoryRun(seededRng('d'), 5, 'easy').mapDetail).toBe('labeled')
-    expect(buildHistoryRun(seededRng('d'), 5, 'medium').mapDetail).toBe('borders')
-    expect(buildHistoryRun(seededRng('d'), 5, 'hard').mapDetail).toBe('plain')
+    expect(buildHistoryRun('2026-07-22', 5, 'easy').mapDetail).toBe('labeled')
+    expect(buildHistoryRun('2026-07-22', 5, 'medium').mapDetail).toBe('borders')
+    expect(buildHistoryRun('2026-07-22', 5, 'hard').mapDetail).toBe('plain')
     // Still a History-mode run regardless of difficulty.
-    expect(buildHistoryRun(seededRng('d'), 5, 'hard').labeled).toBe(true)
+    expect(buildHistoryRun('2026-07-22', 5, 'hard').labeled).toBe(true)
+  })
+
+  it('keeps the day’s hand when the difficulty changes (#47 + #59)', () => {
+    const easy = buildHistoryRun('2026-07-22', 5, 'easy').rounds.map((r) => r.name)
+    const hard = buildHistoryRun('2026-07-22', 5, 'hard').rounds.map((r) => r.name)
+    expect(easy).toEqual(hard)
   })
 
   it('defaults to Easy (labeled) when no difficulty is given', () => {
-    expect(buildHistoryRun(seededRng('d')).mapDetail).toBe('labeled')
+    expect(buildHistoryRun('2026-07-22').mapDetail).toBe('labeled')
   })
 })

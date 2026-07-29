@@ -68,7 +68,7 @@ export function shareUrlFromLocation(): string {
 
 /**
  * Share heading for any run (#31). Dated modes carry the date; named modes
- * (quizzes, history) carry their title.
+ * (quizzes) carry their title.
  */
 export function shareHeading(
   kind: 'daily' | 'speed' | 'versus' | 'history' | 'quiz',
@@ -78,6 +78,8 @@ export function shareHeading(
   if (kind === 'daily' && dateKey) return `Terra Tap — ${formatShareDate(dateKey)}`
   // Undated speed runs are practice (#33) and share under their title instead.
   if (kind === 'speed' && dateKey) return `Terra Tap Speed Run — ${formatShareDate(dateKey)}`
+  // History is dealt per day too (#59), so the date is what makes it comparable.
+  if (kind === 'history' && dateKey) return `Terra Tap History — ${formatShareDate(dateKey)}`
   return `Terra Tap — ${title}`
 }
 

@@ -13,9 +13,10 @@ const STORAGE_KEY = 'terratap:history:difficulty'
 
 /**
  * Map-difficulty picker for Geography History (issue #47). Each choice is a
- * full navigation to `/history?d=…`, which re-deals the hand server-side with
- * the matching map detail. The last choice is remembered so a bare `/history`
- * visit restores it.
+ * full navigation to `/history?d=…`, which re-renders the globe with the
+ * matching map detail — the day's five places are unchanged, since the hand is
+ * seeded by the date alone (#59). The last choice is remembered so a bare
+ * `/history` visit restores it.
  */
 export default function HistoryDifficultyPicker({
   current,
