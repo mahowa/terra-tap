@@ -51,10 +51,13 @@ describe('formatDailyShare', () => {
 })
 
 describe('shareHeading (#31)', () => {
-  it('dates the daily and the speed run', () => {
+  it('dates the daily, the speed run and history', () => {
     expect(shareHeading('daily', 'Daily — x', '2026-07-22')).toBe('Terra Tap — July 22')
     expect(shareHeading('speed', 'Speed Run', '2026-07-22')).toBe(
       'Terra Tap Speed Run — July 22',
+    )
+    expect(shareHeading('history', 'Geography History', '2026-07-22')).toBe(
+      'Terra Tap History — July 22',
     )
   })
 
@@ -64,7 +67,7 @@ describe('shareHeading (#31)', () => {
     )
   })
 
-  it('titles quizzes and history', () => {
+  it('titles quizzes, and any undated run', () => {
     expect(shareHeading('quiz', 'US State Capitals', '')).toBe('Terra Tap — US State Capitals')
     expect(shareHeading('history', 'Geography History', '')).toBe(
       'Terra Tap — Geography History',
