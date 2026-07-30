@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { QUIZZES, QUIZ_RUN_LENGTH, buildQuizRun, getQuiz } from '@/lib/quizzes'
+import { QUIZZES, QUIZ_RUN_LENGTH, buildQuizRun, getQuiz, quizBounds } from '@/lib/quizzes'
 import { seededRng } from '@/lib/rng'
 import { countryAt } from '@/lib/country-lookup'
 
@@ -88,5 +88,77 @@ describe('buildQuizRun', () => {
   it('caps the sample at the pool size', () => {
     const run = buildQuizRun('oceania', seededRng('x'), 999)
     expect(run?.rounds.length).toBe(getQuiz('oceania')!.pool.length)
+  })
+})
+
+// Issue #61: a themed quiz used to open on the same neutral full globe as every
+// other mode, leaving the player to spin the planet to their region first.
+describe('quiz opening frame (#61)', () => {
+  /** Does the box contain the point? East may run past 180 (antimeridian). */
+  const contains = (
+    [[west, south], [east, north]]: [[number, number], [number, number]],
+    { lat, lng }: { lat: number; lng: number },
+  ): boolean => {
+    const unwrapped = lng < west ? lng + 360 : lng
+    return unwrapped >= west && unwrapped <= east && lat >= south && lat <= north
+  }
+
+  it('frames every regional quiz around its whole pool', () => {
+    for (const quiz of QUIZZES) {
+      const bounds = quizBounds(quiz)
+      if (!bounds) continue // globe-spanning: keeps the neutral start
+      for (const place of quiz.pool) {
+        expect(contains(bounds, place), `${quiz.slug}:${place.name}`).toBe(true)
+      }
+    }
+  })
+
+  it('frames each continent quiz and the US capitals', () => {
+    for (const slug of [
+      'us-state-capitals',
+      'africa',
+      'europe',
+      'asia',
+      'north-america',
+      'south-america',
+      'oceania',
+    ]) {
+      expect(quizBounds(getQuiz(slug)!), slug).not.toBeNull()
+    }
+  })
+
+  it('opens a continent quiz on that continent, not the whole globe', () => {
+    const [[west, south], [east, north]] = quizBounds(getQuiz('africa')!)!
+    expect(east - west).toBeLessThan(120)
+    expect(north - south).toBeLessThan(120)
+    // Roughly Africa: west of Dakar, east of Madagascar, spanning the equator.
+    expect(west).toBeLessThan(-10)
+    expect(east).toBeGreaterThan(47)
+    expect(south).toBeLessThan(-18)
+    expect(north).toBeGreaterThan(33)
+  })
+
+  it('frames the Pacific for Oceania rather than stretching around the world', () => {
+    const [[west, south], [east, north]] = quizBounds(getQuiz('oceania')!)!
+    expect(east).toBeGreaterThan(180) // crosses the antimeridian
+    expect(east - west).toBeLessThan(180)
+    expect(south).toBeLessThan(-41)
+    expect(north).toBeGreaterThan(21)
+  })
+
+  it('leaves globe-spanning quizzes on the neutral full-globe start', () => {
+    for (const slug of ['world-capitals', 'big-cities']) {
+      expect(quizBounds(getQuiz(slug)!), slug).toBeNull()
+      expect(buildQuizRun(slug, seededRng('x'))!.startBounds, slug).toBeUndefined()
+    }
+  })
+
+  it('carries the frame on the run, derived from the pool not the deal', () => {
+    const a = buildQuizRun('south-america', seededRng('seed-a'))!
+    const b = buildQuizRun('south-america', seededRng('seed-b'))!
+    expect(a.rounds.map((r) => r.name)).not.toEqual(b.rounds.map((r) => r.name))
+    // Same frame whatever five came up — the opening view is never a hint.
+    expect(a.startBounds).toEqual(quizBounds(getQuiz('south-america')!))
+    expect(a.startBounds).toEqual(b.startBounds)
   })
 })

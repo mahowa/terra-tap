@@ -1,5 +1,6 @@
 import type { Difficulty } from './scoring'
 import type { GameRun, Round } from './game-types'
+import { regionBounds, type Bounds } from './camera'
 import { pick } from './rng'
 
 /**
@@ -300,6 +301,23 @@ export function getQuiz(slug: string): Quiz | null {
   return QUIZZES.find((q) => q.slug === slug) ?? null
 }
 
+/**
+ * The frame a quiz opens on (issue #61): the box around its whole pool, so an
+ * Africa run starts over Africa rather than on a full globe the player has to
+ * spin. Computed from the pool — not the five dealt places — so the opening
+ * view can't be read as a hint.
+ *
+ * Null for the globe-spanning quizzes (world capitals, big cities): their box
+ * is the whole world, and the neutral globe start is already sized to the
+ * viewport for that (issue #34).
+ */
+export function quizBounds(quiz: Quiz): Bounds | null {
+  const bounds = regionBounds(quiz.pool.map((p) => ({ lat: p.lat, lng: p.lng })))
+  if (!bounds) return null
+  const [[west], [east]] = bounds
+  return west <= -180 && east >= 180 ? null : bounds
+}
+
 const toRound = (place: QuizPlace): Round => ({
   name: place.name,
   country: place.country,
@@ -312,7 +330,7 @@ const toRound = (place: QuizPlace): Round => ({
 /**
  * Build a playable practice run from a quiz: `count` distinct places sampled
  * from its pool with the supplied rng (inject a seeded rng in tests,
- * Math.random in pages).
+ * Math.random in pages). The run opens framed on the quiz's region (#61).
  */
 export function buildQuizRun(
   slug: string,
@@ -322,5 +340,12 @@ export function buildQuizRun(
   const quiz = getQuiz(slug)
   if (!quiz) return null
   const rounds = pick(quiz.pool, Math.min(count, quiz.pool.length), rng).map(toRound)
-  return { title: quiz.title, rounds, mode: 'practice', dateKey: '' }
+  const bounds = quizBounds(quiz)
+  return {
+    title: quiz.title,
+    rounds,
+    mode: 'practice',
+    dateKey: '',
+    ...(bounds ? { startBounds: bounds } : {}),
+  }
 }

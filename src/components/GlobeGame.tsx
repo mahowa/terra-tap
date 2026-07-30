@@ -115,6 +115,12 @@ const BORDERS_SOURCE = 'gg-borders'
 // player's current view (see cameraActionFor, issue #7).
 const GLOBE_CENTER: [number, number] = [0, 20]
 
+// Region-framed openings (#61). The padding keeps a quiz's outermost places off
+// the HUD panel, and the zoom cap stops a compact pool from opening so close
+// that the player has lost the surrounding continent.
+const REGION_PADDING_PX = 60
+const REGION_MAX_ZOOM = 4
+
 /**
  * A small colored dot marker for guess/answer. The dot lives in an inner element
  * so its pop-in animation (#46) doesn't fight the translate transform MapLibre
@@ -256,6 +262,8 @@ export default function GlobeGame({
   const roundStartRef = useRef<number>(0)
   // Guards the one-shot server save of a completed run (#49).
   const syncedRef = useRef(false)
+  // The opening region frame (#61), read once so it can't remount the map.
+  const startBoundsRef = useRef(run.startBounds)
 
   // On mount, if this lockable run was already played in this browser
   // (daily or speed run, #21), jump straight to the saved results. Otherwise
@@ -373,6 +381,17 @@ export default function GlobeGame({
         map?.setProjection({ type: 'globe' })
         // Re-apply after the projection switch so the start view is a full globe.
         map?.jumpTo(startView)
+        // Themed quizzes open on their region instead (#61): a jump, not a fly,
+        // so round 1 starts settled. From here the camera stays put between
+        // rounds as usual (#7).
+        const region = startBoundsRef.current
+        if (region) {
+          map?.fitBounds(region, {
+            padding: REGION_PADDING_PX,
+            maxZoom: REGION_MAX_ZOOM,
+            duration: 0,
+          })
+        }
       })
       map.on('load', () => {
         setReady(true)
