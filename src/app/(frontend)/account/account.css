@@ -185,6 +185,17 @@
   font-size: 14px;
   margin: 0;
 }
+/* Inline "Sign in instead" offered when the address is already taken (#65). */
+.ac-error-action {
+  font: inherit;
+  font-weight: 700;
+  color: #7dd3fc;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
 .ac-msg {
   color: #6ee7b7;
   font-size: 14px;
