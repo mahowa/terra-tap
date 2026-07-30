@@ -3,9 +3,10 @@
 import { useState } from 'react'
 
 /**
- * Signed-in account controls (issue #49): edit profile, import this device's
- * local history into the account, and sign out. All calls hit Payload's REST /
- * the app's own routes on the same origin and reload to re-render the server view.
+ * Signed-in account controls (issue #49): edit profile and sign out. Calls hit
+ * Payload's REST endpoints on the same origin and reload to re-render the
+ * server view. Completed runs reach the account from the game itself, so
+ * there's no manual import of this device's local history.
  */
 export default function AccountClient({
   displayName: initialName,
@@ -36,49 +37,6 @@ export default function AccountClient({
       setMsg('Saved.')
     } catch (err) {
       setMsg((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  // Push completed daily/speed runs saved on this device up to the account, so a
-  // player who logged in after playing doesn't lose their history.
-  const importLocal = async () => {
-    setBusy(true)
-    setMsg(null)
-    let imported = 0
-    try {
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const key = window.localStorage.key(i)
-        const m = key?.match(/^terratap:(daily|speed):(\d{4}-\d{2}-\d{2})$/)
-        if (!key || !m) continue
-        const raw = window.localStorage.getItem(key)
-        if (!raw) continue
-        const saved = JSON.parse(raw) as {
-          total?: number
-          rounds?: unknown[]
-          elapsedMs?: number
-        }
-        if (typeof saved.total !== 'number') continue
-        const res = await fetch('/api/results/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({
-            mode: m[1],
-            dateKey: m[2],
-            title: m[1] === 'daily' ? 'Daily' : 'Speed Run',
-            total: saved.total,
-            rounds: saved.rounds,
-            elapsedMs: saved.elapsedMs,
-          }),
-        })
-        if (res.ok) imported += 1
-      }
-      setMsg(imported ? `Imported ${imported} game${imported === 1 ? '' : 's'}.` : 'Nothing to import.')
-      if (imported) window.location.reload()
-    } catch {
-      setMsg('Import failed.')
     } finally {
       setBusy(false)
     }
@@ -120,9 +78,6 @@ export default function AccountClient({
       </form>
 
       <div className="ac-actions">
-        <button className="ac-btn" onClick={importLocal} disabled={busy}>
-          Import this device’s history
-        </button>
         <button className="ac-btn ac-btn-ghost" onClick={signOut} disabled={busy}>
           Sign out
         </button>
