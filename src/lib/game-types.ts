@@ -47,6 +47,13 @@ export type GameRun = {
   /** Versus (#5): the challenge seed this run was dealt from. */
   versusSeed?: string
   /**
+   * Opening camera frame, [[west, south], [east, north]] (issue #61): a themed
+   * quiz starts zoomed to its region instead of on the whole globe. Derived
+   * from the quiz's *pool*, never the dealt rounds, so the framing gives
+   * nothing away. Unset ⇒ the neutral full-globe start.
+   */
+  startBounds?: [[number, number], [number, number]]
+  /**
    * When set, the run locks after one completed play: the result is saved to
    * this browser storage key and replays show the saved result instead (#21).
    * The daily and the (daily-seeded) speed run both use this.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cameraActionFor, initialGlobeZoom, pairBounds } from '@/lib/camera'
+import { cameraActionFor, initialGlobeZoom, pairBounds, regionBounds } from '@/lib/camera'
 
 const PARIS = { lat: 48.8566, lng: 2.3522 }
 const LONDON = { lat: 51.5074, lng: -0.1278 }
@@ -36,6 +36,66 @@ describe('pairBounds', () => {
 
   it('is order-independent', () => {
     expect(pairBounds(PARIS, LONDON)).toEqual(pairBounds(LONDON, PARIS))
+  })
+})
+
+describe('regionBounds (#61)', () => {
+  const CAIRO = { lat: 30.04, lng: 31.24 }
+  const LAGOS = { lat: 6.52, lng: 3.38 }
+  const JOHANNESBURG = { lat: -26.2, lng: 28.05 }
+
+  it('returns null for an empty pool', () => {
+    expect(regionBounds([])).toBeNull()
+  })
+
+  it('boxes the pool with padding on every side', () => {
+    const [[west, south], [east, north]] = regionBounds([CAIRO, LAGOS, JOHANNESBURG], 5)!
+    expect(west).toBeCloseTo(3.38 - 5, 5)
+    expect(east).toBeCloseTo(31.24 + 5, 5)
+    expect(south).toBeCloseTo(-26.2 - 5, 5)
+    expect(north).toBeCloseTo(30.04 + 5, 5)
+  })
+
+  it('frames a single place as a small box around it', () => {
+    const [[west, south], [east, north]] = regionBounds([CAIRO], 4)!
+    expect(east - west).toBeCloseTo(8, 5)
+    expect(north - south).toBeCloseTo(8, 5)
+  })
+
+  it('crosses the antimeridian instead of wrapping the long way (Pacific pool)', () => {
+    const perth = { lat: -31.95, lng: 115.86 }
+    const suva = { lat: -18.14, lng: 178.44 }
+    const honolulu = { lat: 21.31, lng: -157.86 }
+    const [[west, south], [east, north]] = regionBounds([perth, suva, honolulu], 5)!
+    expect(west).toBeCloseTo(115.86 - 5, 5)
+    // Honolulu, unwrapped past 180 — a naive min/max would have spanned 273°.
+    expect(east).toBeCloseTo(-157.86 + 360 + 5, 5)
+    expect(east - west).toBeLessThan(120)
+    expect(south).toBeLessThan(-31)
+    expect(north).toBeGreaterThan(21)
+  })
+
+  it('collapses a globe-spanning pool to the whole world', () => {
+    const everywhere = [-170, -90, -10, 10, 90, 170].map((lng) => ({ lat: 0, lng }))
+    expect(regionBounds(everywhere)).toEqual([
+      [-180, -8],
+      [180, 8],
+    ])
+  })
+
+  it('keeps latitudes inside the projection', () => {
+    const [[, south], [, north]] = regionBounds([
+      { lat: 78, lng: 15 },
+      { lat: -78, lng: 20 },
+    ])!
+    expect(south).toBeGreaterThanOrEqual(-84)
+    expect(north).toBeLessThanOrEqual(84)
+  })
+
+  it('is order-independent', () => {
+    expect(regionBounds([CAIRO, LAGOS, JOHANNESBURG])).toEqual(
+      regionBounds([JOHANNESBURG, CAIRO, LAGOS]),
+    )
   })
 })
 
