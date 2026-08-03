@@ -73,6 +73,70 @@ describe('rankAllTime (#50)', () => {
   })
 })
 
+// Issue #69: the same day reaching the table twice (second device, cleared site
+// data) counted twice, so fewer days outscored more days.
+describe('rankAllTime double-counting (#69)', () => {
+  it('counts a day saved twice once, at its best score', () => {
+    const entries = rankAllTime([
+      row({ userId: 1, total: 300, dateKey: '2026-07-23' }),
+      row({ userId: 1, total: 280, dateKey: '2026-07-23' }), // same day, second device
+    ])
+    expect(entries[0].score).toBe(300)
+  })
+
+  it('puts the player with more days on top of the one with more copies', () => {
+    const entries = rankAllTime([
+      // Three real days.
+      row({ userId: 'many-days', total: 300, dateKey: '2026-07-21' }),
+      row({ userId: 'many-days', total: 300, dateKey: '2026-07-22' }),
+      row({ userId: 'many-days', total: 300, dateKey: '2026-07-23' }),
+      // One day, stored three times.
+      row({ userId: 'one-day', total: 320, dateKey: '2026-07-23' }),
+      row({ userId: 'one-day', total: 320, dateKey: '2026-07-23' }),
+      row({ userId: 'one-day', total: 320, dateKey: '2026-07-23' }),
+    ])
+    expect(entries.map((e) => [e.userId, e.score])).toEqual([
+      ['many-days', 900],
+      ['one-day', 320],
+    ])
+  })
+
+  it('keeps the same day across different modes', () => {
+    const entries = rankAllTime([
+      row({ userId: 1, total: 100, mode: 'daily', dateKey: '2026-07-23' }),
+      row({ userId: 1, total: 90, mode: 'speed', dateKey: '2026-07-23' }),
+      row({ userId: 1, total: 80, mode: 'history', dateKey: '2026-07-23' }),
+    ])
+    expect(entries[0].score).toBe(270)
+  })
+
+  it('still counts each undated quiz or versus run', () => {
+    const entries = rankAllTime([
+      row({ userId: 1, total: 100, mode: 'quiz', dateKey: '' }),
+      row({ userId: 1, total: 100, mode: 'quiz', dateKey: '' }),
+      row({ userId: 1, total: 100, mode: 'versus', dateKey: null }),
+    ])
+    expect(entries[0].score).toBe(300)
+  })
+
+  it('ranks by real days through rankBoard too', () => {
+    const entries = rankBoard(
+      [
+        row({ userId: 1, total: 500, dateKey: '2026-07-23' }),
+        row({ userId: 1, total: 500, dateKey: '2026-07-23' }),
+        row({ userId: 2, total: 400, dateKey: '2026-07-22' }),
+        row({ userId: 2, total: 400, dateKey: '2026-07-23' }),
+      ],
+      'alltime',
+      '2026-07-23',
+    )
+    expect(entries.map((e) => [e.userId, e.score])).toEqual([
+      [2, 800],
+      [1, 500],
+    ])
+  })
+})
+
 describe('rankStreak (#50)', () => {
   it('ranks by best daily streak', () => {
     const rows: PlayerRow[] = [
