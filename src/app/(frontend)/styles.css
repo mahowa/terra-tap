@@ -162,3 +162,88 @@ svg {
     }
   }
 }
+
+/* Profile corner badge (#67): initials when signed in, a Sign in pill when not.
+   Fixed to the top right of every page from the frontend layout. */
+.tt-profile {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-family: system-ui;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #04263a;
+  background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+  border: 1px solid rgba(8, 47, 73, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.tt-profile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+.tt-profile:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+}
+.tt-profile-initials {
+  line-height: 1;
+}
+/* The profile flag rides the badge's lower-right corner. */
+.tt-profile-flag {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  font-size: 13px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.tt-profile-out {
+  width: auto;
+  height: auto;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow: none;
+}
+.tt-profile-out:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+/* Keep the in-game HUD's round/score line clear of the badge, and pull the
+   home page's corner links left of it, so the corner is never a pile-up. The
+   signed-out pill is wider than the initials circle, so it reserves more. */
+body:has(.tt-profile) .gg-top,
+body:has(.tt-profile) .mc-corner-links {
+  padding-right: 56px;
+}
+body:has(.tt-profile-out) .gg-top,
+body:has(.tt-profile-out) .mc-corner-links {
+  padding-right: 116px;
+}
+@media (max-width: 480px) {
+  .tt-profile {
+    width: 38px;
+    height: 38px;
+    font-size: 14px;
+  }
+  body:has(.tt-profile) .gg-top,
+  body:has(.tt-profile) .mc-corner-links {
+    padding-right: 48px;
+  }
+  body:has(.tt-profile-out) .gg-top,
+  body:has(.tt-profile-out) .mc-corner-links {
+    padding-right: 104px;
+  }
+}

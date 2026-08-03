@@ -1,5 +1,6 @@
 import React from 'react'
 import './styles.css'
+import ProfileCorner from '@/components/ProfileCorner'
 import { buildSiteMetadata, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo'
 
 export const metadata = buildSiteMetadata()
@@ -26,6 +27,8 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* Who you're signed in as, in the same corner on every page (#67). */}
+        <ProfileCorner />
         <main>{children}</main>
       </body>
     </html>

@@ -8,15 +8,14 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage() {
   return (
     <div className="mc-home">
+      {/* The account link moved to the layout's corner badge (#67), which shows
+          who's signed in on every page. */}
       <div className="mc-corner-links">
         <Link className="mc-account-link" href="/leaderboard">
           Leaderboard
         </Link>
         <Link className="mc-account-link" href="/groups">
           Groups
-        </Link>
-        <Link className="mc-account-link" href="/account">
-          Account
         </Link>
       </div>
       <div className="mc-hero">
