@@ -49,7 +49,24 @@ describe('summarizeResults (#49)', () => {
     )
     expect(s.daily.currentStreak).toBe(2)
     expect(s.daily.best).toBe(400)
-    // Both rows still count toward lifetime totals.
+    // Two days played, so two games — the repeated day is one game at its best
+    // score, matching the leaderboard's counting (#69).
+    expect(s.totalGames).toBe(2)
+    expect(s.totalPoints).toBe(700)
+    expect(s.byMode.daily).toBe(2)
+  })
+
+  it('does not inflate lifetime points when a day is stored twice (#69)', () => {
+    const s = summarizeResults(
+      [
+        { mode: 'daily', dateKey: '2026-07-23', total: 300 },
+        { mode: 'daily', dateKey: '2026-07-23', total: 300 }, // second device
+        { mode: 'quiz', dateKey: '', total: 90 },
+        { mode: 'quiz', dateKey: '', total: 90 }, // a genuinely separate quiz
+      ],
+      '2026-07-23',
+    )
+    expect(s.totalPoints).toBe(300 + 90 + 90)
     expect(s.totalGames).toBe(3)
   })
 
