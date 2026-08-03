@@ -1,5 +1,6 @@
 import { computeStats } from './stats'
 import { flagToIso, regionForFlag } from './regions'
+import { bestPerSlot } from './runs'
 
 /**
  * Leaderboard ranking (issue #50). Pure functions over in-memory result rows so
@@ -94,26 +95,37 @@ export function rankDaily(rows: PlayerRow[], todayKey: string): LeaderboardEntry
   return rank([...byUser.values()])
 }
 
-/** All-time: sum of every completed run's points per player. */
+/**
+ * All-time: each player's points across their runs (issue #69).
+ *
+ * A dated run counts once for the day it belongs to, keeping the best attempt —
+ * see `bestPerSlot`. The board used to add up every stored row, so a player
+ * whose daily was saved twice (second device, cleared site data) outranked
+ * players with more days on the same real scores.
+ */
 export function rankAllTime(rows: PlayerRow[]): LeaderboardEntry[] {
-  const byUser = new Map<string, Agg>()
+  const byUser = new Map<string, PlayerRow[]>()
   for (const r of rows) {
     const key = String(r.userId)
-    const prev = byUser.get(key)
-    if (prev) {
-      prev.score += r.total
-      if (r.createdAt < prev.tiebreak) prev.tiebreak = r.createdAt
-    } else {
-      byUser.set(key, {
-        userId: r.userId,
-        displayName: r.displayName,
-        flag: r.flag,
-        score: r.total,
-        tiebreak: r.createdAt,
-      })
-    }
+    const held = byUser.get(key)
+    if (held) held.push(r)
+    else byUser.set(key, [r])
   }
-  return rank([...byUser.values()])
+  const aggs: Agg[] = [...byUser.values()].map((playerRows) => {
+    const counted = bestPerSlot(playerRows)
+    const first = playerRows.reduce(
+      (earliest, r) => (r.createdAt < earliest ? r.createdAt : earliest),
+      playerRows[0].createdAt,
+    )
+    return {
+      userId: playerRows[0].userId,
+      displayName: playerRows[0].displayName,
+      flag: playerRows[0].flag,
+      score: counted.reduce((sum, r) => sum + r.total, 0),
+      tiebreak: first,
+    }
+  })
+  return rank(aggs)
 }
 
 /** Best daily streak per player (reuses the on-device streak core). */

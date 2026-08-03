@@ -398,20 +398,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Not `justify-content: center` (issue #68): a centered flex column that
+     overflows pushes its first children above the scroll origin, where no
+     amount of scrolling reaches them — the score heading was cut off. The auto
+     margins below center the column when there's room and collapse to zero
+     when there isn't, so the whole card stays scrollable. */
+  justify-content: flex-start;
   gap: 14px;
   padding: 24px;
   background: radial-gradient(circle at 50% 30%, #0b1224 0%, #05070f 70%, #000 100%);
   color: #e2e8f0;
   text-align: center;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
-/* When the content (5 history blurbs) is taller than the viewport, scroll from
-   the top instead of clipping the centered column. */
-@media (max-height: 760px) {
-  .gg-done {
-    justify-content: flex-start;
-  }
+.gg-done > :first-child {
+  margin-top: auto;
+}
+.gg-done > :last-child {
+  margin-bottom: auto;
 }
 .gg-done h1 {
   margin: 0;

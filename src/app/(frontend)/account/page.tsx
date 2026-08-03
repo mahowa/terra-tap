@@ -47,7 +47,12 @@ export default async function AccountPage() {
 
   const todayKey = new Date().toISOString().slice(0, 10)
   const summary = summarizeResults(
-    docs.map((d) => ({ mode: d.mode, dateKey: d.dateKey, total: d.total })),
+    docs.map((d) => ({
+      mode: d.mode,
+      dateKey: d.dateKey,
+      total: d.total,
+      createdAt: d.createdAt,
+    })),
     todayKey,
   )
   const recent = docs.slice(0, 10)
