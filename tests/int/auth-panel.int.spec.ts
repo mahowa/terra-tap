@@ -115,7 +115,7 @@ describe('AuthPanel sign-up (#65)', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(bodyOf(fetchMock.mock.calls[0]).email).toBe('player@example.com')
-    expect(fetchMock.mock.calls[1][0]).toBe('/api/users/login')
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/auth/login')
     expect(bodyOf(fetchMock.mock.calls[1]).email).toBe('player@example.com')
   })
 
@@ -177,6 +177,52 @@ describe('AuthPanel sign-up (#65)', () => {
   })
 })
 
+// Issue #73: a two-hour session signed players out between sittings, so the
+// form carries a "stay signed in" toggle the login route reads.
+describe('AuthPanel stay signed in (#73)', () => {
+  const remember = () => screen.getByLabelText(/stay signed in/i) as HTMLInputElement
+
+  it('is on by default', () => {
+    render(React.createElement(AuthPanel))
+    expect(remember().checked).toBe(true)
+  })
+
+  it('asks to be remembered when the box is left checked', async () => {
+    render(React.createElement(AuthPanel))
+    type(/email/i, 'player@example.com')
+    type(/password/i, 'longenough')
+    submitForm()
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(bodyOf(fetchMock.mock.calls[0]).remember).toBe(true)
+  })
+
+  it('asks for a browser-session sign-in when the box is cleared', async () => {
+    render(React.createElement(AuthPanel))
+    type(/email/i, 'player@example.com')
+    type(/password/i, 'longenough')
+    fireEvent.click(remember())
+    expect(remember().checked).toBe(false)
+    submitForm()
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(bodyOf(fetchMock.mock.calls[0]).remember).toBe(false)
+  })
+
+  it('carries the choice through the sign-up flow', async () => {
+    render(React.createElement(AuthPanel))
+    openSignup()
+    type(/email/i, 'player@example.com')
+    type(/password/i, 'longenough')
+    fireEvent.click(remember())
+    submitForm()
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/auth/login')
+    expect(bodyOf(fetchMock.mock.calls[1]).remember).toBe(false)
+  })
+})
+
 describe('AuthPanel sign-in', () => {
   it('posts straight to login without creating anything', async () => {
     render(React.createElement(AuthPanel))
@@ -186,7 +232,7 @@ describe('AuthPanel sign-in', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/users/login')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/login')
   })
 
   it('reports bad credentials plainly', async () => {
