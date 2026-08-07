@@ -1,12 +1,18 @@
 import type { CollectionConfig } from 'payload'
 import { adminOnly, adminOnlyField, adminOrSelf, isAdmin } from '@/lib/access'
+import { REMEMBER_ME_SECONDS } from '@/lib/session'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'displayName',
   },
-  auth: true,
+  auth: {
+    // Long enough for a remembered sign-in to last (#73). Whether it actually
+    // survives closing the browser is the cookie's call — see src/lib/session.ts
+    // — and server-side sessions mean signing out still revokes the token.
+    tokenExpiration: REMEMBER_ME_SECONDS,
+  },
   access: {
     // Real accounts (#49): users are no longer world-readable. A player sees and
     // edits only their own record; admins manage everyone and reach /admin.

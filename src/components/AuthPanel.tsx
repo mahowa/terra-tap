@@ -9,6 +9,7 @@ import {
   passwordProblem,
   signupErrorMessage,
 } from '@/lib/signup'
+import { rememberDurationLabel } from '@/lib/session'
 
 /**
  * Sign-in / sign-up panel (issue #49). Talks to Payload's built-in auth REST
@@ -34,6 +35,8 @@ export default function AuthPanel() {
     const email = normalizeEmail(String(form.get('email') ?? ''))
     const password = String(form.get('password') ?? '')
     const displayName = String(form.get('displayName') ?? '').trim()
+    // Off means a session cookie: signed out when the browser closes (#73).
+    const remember = form.get('remember') === 'on'
 
     const problem = emailProblem(email) ?? passwordProblem(password)
     if (problem) {
@@ -58,11 +61,11 @@ export default function AuthPanel() {
           throw new Error(signupErrorMessage(data))
         }
       }
-      const login = await fetch('/api/users/login', {
+      const login = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember }),
       })
       if (!login.ok) {
         throw new Error(
@@ -127,6 +130,15 @@ export default function AuthPanel() {
             minLength={MIN_PASSWORD_LENGTH}
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           />
+        </label>
+        {/* Stay signed in (#73): on by default, because a daily game you're
+            signed out of by tomorrow isn't much of a streak. */}
+        <label className="ac-check">
+          <input type="checkbox" name="remember" defaultChecked />
+          <span>
+            Stay signed in
+            <small> — for {rememberDurationLabel()} on this device</small>
+          </span>
         </label>
         {error && (
           <p className="ac-error" role="alert">
