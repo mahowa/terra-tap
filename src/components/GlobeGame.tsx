@@ -41,6 +41,11 @@ import {
   showStartGate,
 } from '@/lib/speed'
 import { legacyDailyLockKey } from '@/lib/locks'
+import {
+  maxScoreForRounds,
+  recordRound,
+  reconcileSavedRounds,
+} from '@/lib/results-summary'
 import { loadStats, streakText, type DailyStats } from '@/lib/stats'
 import {
   clearProgress,
@@ -262,6 +267,11 @@ export default function GlobeGame({
   const roundStartRef = useRef<number>(0)
   // Guards the one-shot server save of a completed run (#49).
   const syncedRef = useRef(false)
+  // The round a scoring pass has already claimed (#74). Both scoring paths look
+  // up countries before they can record anything, and a second tap on Submit —
+  // or the speed clock expiring mid-submit — used to slip through the phase
+  // check during that await and record the same place twice.
+  const scoringRef = useRef(-1)
   // The opening region frame (#61), read once so it can't remount the map.
   const startBoundsRef = useRef(run.startBounds)
 
@@ -276,7 +286,19 @@ export default function GlobeGame({
       run.mode === 'daily' ? legacyDailyLockKey(run.dateKey) : undefined,
     )
     if (prior) {
-      setSaved(prior)
+      // Results stored before the double-scoring guard can carry a repeated
+      // round, which reads as a place played twice against a ceiling that never
+      // counted it (#74). Line the stored rows back up with the run and
+      // re-total what's left, so an old save shows what was actually played.
+      const rounds = reconcileSavedRounds(
+        prior.rounds,
+        run.rounds.map((r) => r.name),
+      )
+      setSaved(
+        rounds.length === prior.rounds.length
+          ? prior
+          : { ...prior, rounds, total: rounds.reduce((sum, r) => sum + r.points, 0) },
+      )
       setPlayedEarlier(true)
       setPhase('done')
       return
@@ -564,6 +586,10 @@ export default function GlobeGame({
 
   const submitGuess = useCallback(async () => {
     if (!guess || !round || !answer || phase !== 'guessing') return
+    // Claim the round synchronously — `phase` won't have caught up by the time
+    // a second call arrives during the lookups below (#74).
+    if (scoringRef.current === index) return
+    scoringRef.current = index
     if (run.timed && roundStartRef.current) {
       setElapsedMs((e) => e + (Date.now() - roundStartRef.current))
     }
@@ -575,9 +601,8 @@ export default function GlobeGame({
     ])
     const answerCountry = answerFeature?.properties.name ?? null
     const answerRegion = answerFeature?.geometry ?? null
-    setResults((prev) => [
-      ...prev,
-      {
+    setResults((prev) =>
+      recordRound(prev, index, {
         round,
         guess,
         distanceKm: s.distanceKm,
@@ -588,22 +613,25 @@ export default function GlobeGame({
         guessCountry,
         answerCountry,
         answerRegion,
-      },
-    ])
+      }),
+    )
     setAnnouncement(describeReveal(round.name, s.base, s.points, s.distanceKm))
     setPhase('revealed')
-  }, [guess, round, answer, phase, run.timed])
+  }, [guess, round, answer, phase, index, run.timed])
 
   // Speed-run clock hit zero with no guess placed: score the round as a zero.
   const timeoutRound = useCallback(async () => {
     if (!round || !answer || phase !== 'guessing') return
+    // Same claim as submitGuess: whichever path gets here first owns the round,
+    // so a clock expiring during a submit can't score it a second time (#74).
+    if (scoringRef.current === index) return
+    scoringRef.current = index
     if (roundStartRef.current) {
       setElapsedMs((e) => e + (Date.now() - roundStartRef.current))
     }
     const answerFeature = await countryFeatureAt(answer)
-    setResults((prev) => [
-      ...prev,
-      {
+    setResults((prev) =>
+      recordRound(prev, index, {
         round,
         guess: null,
         distanceKm: null,
@@ -614,11 +642,11 @@ export default function GlobeGame({
         guessCountry: null,
         answerCountry: answerFeature?.properties.name ?? null,
         answerRegion: answerFeature?.geometry ?? null,
-      },
-    ])
+      }),
+    )
     setAnnouncement(describeReveal(round.name, 0, 0, null))
     setPhase('revealed')
-  }, [round, answer, phase])
+  }, [round, answer, phase, index])
 
   // Keep the expiry handler pointing at the latest closures (same pattern as clickRef).
   useEffect(() => {
@@ -672,6 +700,7 @@ export default function GlobeGame({
     setIndex(0)
     setGuess(null)
     setResults([])
+    scoringRef.current = -1
     setElapsedMs(0)
     setRemainingMs(null)
     setStarted(initialStarted(!!run.timed))
@@ -716,10 +745,14 @@ export default function GlobeGame({
   const opponentPace =
     opponentBases ? opponentRunningTotal(opponentBases, run.rounds, results.length) : null
 
-  const maxPossible = run.rounds.reduce(
-    (s, r) => s + 100 * DIFFICULTY_MULTIPLIER[r.difficulty],
-    0,
-  )
+  // The score ceiling comes from the run's rounds. A saved result is scored
+  // against its own stored multipliers instead, so a replay's total and its
+  // denominator always describe the same set of rounds (#74).
+  const maxPossible = saved
+    ? maxScoreForRounds(saved.rounds)
+    : maxScoreForRounds(
+        run.rounds.map((r) => ({ name: r.name, multiplier: DIFFICULTY_MULTIPLIER[r.difficulty] })),
+      )
   // Final total + a one-line verdict, computed once per (stable) score so it
   // doesn't reshuffle on every results-screen re-render (e.g. the Share button).
   const finalTotal = saved ? saved.total : total
